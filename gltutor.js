@@ -3640,7 +3640,7 @@ $().ready(function() {
         var msgBounds = errorLineMsg.find(".message").bounds();
         var editors = _([editor, vs_editor, fs_editor]);
 
-        var errDist = msgBounds.distance(mousePos[0], mousePos[1])
+        var mouseDist = msgBounds.distance(mousePos[0], mousePos[1])
 
         var selRects = _([]);
         editors.each(function(e) {
@@ -3676,11 +3676,11 @@ $().ready(function() {
             });
         });
 
-        errDist = Math.min(errDist, selRects.map(function(rect) {
+        var selDist = selRects.map(function(rect) {
             return msgBounds.rectDistance(rect);
-        }).min());
+        }).min();
 
-        var opacity = errDist / 10;
+        var opacity = Math.min(mouseDist / 10, selDist);
         opacity = Math.max(Math.min(opacity, 1.0), 0.2);
         errorLineMsg.find(".message").css({opacity: opacity});
     }
