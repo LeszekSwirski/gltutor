@@ -1,0 +1,344 @@
+<html>
+
+<head>
+
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+
+<script type="text/javascript" src="lib/jcanvas.min.js"></script>
+
+<script src="lib/Sandbox.js" type="text/javascript"></script>
+
+<script src="lib/codemirror-compressed.js" type="text/javascript"></script>
+<link rel="stylesheet" href="lib/codemirror-4.2/lib/codemirror.css">
+<link rel="stylesheet" href="lib/codemirror-4.2/addon/hint/show-hint.css">
+<link rel="stylesheet" href="lib/codemirror-4.2/addon/tern/tern.css">
+<link rel="stylesheet" href="lib/codemirror-4.2/addon/dialog/dialog.css">
+<script src="lib/stacktrace.js" type="text/javascript"></script>
+<script src="lib/acorn/acorn.js"></script>
+<script src="lib/acorn/acorn_loose.js"></script>
+<script src="lib/acorn/walk.js"></script>
+<script src="http://ternjs.net/doc/demo/polyfill.js"></script>
+<script src="http://ternjs.net/lib/signal.js"></script>
+<script src="http://ternjs.net/lib/tern.js"></script>
+<script src="http://ternjs.net/lib/def.js"></script>
+<script src="http://ternjs.net/lib/comment.js"></script>
+<script src="http://ternjs.net/lib/infer.js"></script>
+<script src="http://ternjs.net/plugin/doc_comment.js"></script>
+
+<script src="lib/esprima.js"></script>
+<script src="lib/escodegen.browser.min.js"></script>
+
+<script src="lib/vecmath.min.js"></script>
+
+<script src="gltutor.js" type="text/javascript"></script>
+
+<style>
+* { margin:0; padding:0}
+#canvaspanel { height: 100%; position: fixed; top:0px; }
+#canvaspanel #canvas,
+#canvaspanel #overlay { height: 100%; width: 100%; position: absolute; }
+#canvaspanel .consoleWrapper { max-height: 100%; width: 100%; position: absolute; bottom: 0; height: auto;
+    pointer-events: none; }
+
+#codepanel {min-width:400px;width:45%;position:relative}
+#codepanel .CodeMirror {
+    height: auto;
+    padding-bottom: 2em;
+}
+#codepanel .CodeMirror,
+#canvaspanel #console {
+    font-family: Consolas, Inconsolata, Monaco, Liberation Mono, Lucida Console, "Courier New", monospace;
+    font-size: 13px;
+}
+#canvaspanel #console {
+    padding: 5px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+#codepanel .CodeMirror-scroll {
+    border: 1px #ccc solid;
+    height: auto;
+    overflow-y: hidden;
+    overflow-x: auto;
+    min-height: 100px;
+}
+#codepanel div.CodeMirror div.CodeMirror-selected { background-color: rgba(20, 20, 20, 0.17); }
+#codepanel div.CodeMirror .CodeMirror-focused div.CodeMirror-selected {background-color: rgba(20, 2, 167, 0.17); }
+#codepanel div.CodeMirror span.CodeMirror-matchingbracket {background-color: #9f9; color: #090; font-weight: bold; }
+#codepanel div.CodeMirror span.CodeMirror-nonmatchingbracket {background-color: #f99; color: #922; font-weight: bold; }
+
+#codepanel .CodeMirror .executing {background:#99f}
+
+#errorLineMsg .message, 
+#codepanel .CodeMirror .error {
+    background: #f32;
+}
+#codepanel .CodeMirror .runtimeerror,
+#errorLineMsg.runtime .message {
+    background: #fc9;
+}
+
+#errorLineMsg {
+    position:absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+#errorLineMsg .message {
+    padding: 3px;
+    margin-top: 4px;
+    border: 1px solid #000;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: sans-serif;
+}
+#errorLineMsg .underline {
+    background: black;
+    height: 2px;
+    position: absolute;
+}
+#errorLineMsg.runtime .underline {
+    background: red;
+}
+
+#notification {
+    position: absolute;
+    background: #ccc;
+    border: 2px solid #666;
+    border-radius: 5px;
+    padding: 0.5em 2em;
+    font-family: sans-serif;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="canvaspanel">
+<canvas id="canvas"></canvas>
+<canvas id="overlay"></canvas>
+<div class="consoleWrapper"><pre id="console" style="white-space:pre-wrap"></pre></div>
+</div>
+
+<div id="codepanel">
+
+<h2>OpenGL Code</h2>
+<textarea id="code">
+var icosahedronArray, icosahedronIndices, numTriangles;
+function init() {
+    // Create an icosahedron
+    
+    // First create the twelve vertices...
+    var t = (1.0 + sqrt(5.0)) / 2.0;
+    var vertices = [
+      // Position     Colour
+        -1,  t,  0,   0.1, 0.1, 1.0,
+	     1,  t,  0,   0.1, 1.0, 0.1,
+        -1, -t,  0,   0.1, 1.0, 1.0,
+         1, -t,  0,   0.1, 0.1, 0.1,
+          
+         0, -1,  t,   1.0, 0.1, 1.0,
+         0,  1,  t,   1.0, 1.0, 1.0,
+         0, -1, -t,   0.5, 0.1, 1.0,
+         0,  1, -t,   0.5, 1.0, 0.1,
+          
+         t,  0, -1,   0.5, 1.0, 1.0,
+         t,  0,  1,   0.5, 0.1, 0.1,
+        -t,  0, -1,   0.1, 0.5, 0.1,
+        -t,  0,  1,   1.0, 0.1, 0.1
+    ];
+      
+    // ...then index into the vertices to get the triangular faces
+    var tris = [    
+        // 5 faces around point 0
+        0, 11, 5,
+        0, 5, 1,
+        0, 1, 7,
+        0, 7, 10,
+        0, 10, 11,
+
+        // 5 adjacent faces
+        1, 5, 9,
+        5, 11, 4,
+        11, 10, 2,
+        10, 7, 6,
+        7, 1, 8,
+    
+        // 5 faces around point 3
+        3, 9, 4,
+        3, 4, 2,
+        3, 2, 6,
+        3, 6, 8,
+        3, 8, 9,
+    
+        // 5 adjacent faces
+        4, 9, 5,
+        2, 4, 11,
+        6, 2, 10,
+        8, 6, 7,
+        9, 8, 1
+    ];
+ 
+    
+    // Bind the icosahedron vertices to an array buffer
+    icosahedronArray = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, icosahedronArray);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+    // Bind the icosahedron triangle indices to another array buffer
+    icosahedronIndices = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, icosahedronIndices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(tris), gl.STATIC_DRAW);
+    
+    // An icosahedron has 20 faces
+    numTriangles = tris.length;
+}
+
+function draw() {
+    // Clear the screen
+	gl.clearColor(0.8, 0.8, 0.8, 1);
+	gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+    // Get the current shader program, so that we can set its attributes and uniforms
+    var prog = gl.getParameter(gl.CURRENT_PROGRAM);
+    
+    
+    // Load the icosahedron buffers (in case something else has been bound already)
+    gl.bindBuffer(gl.ARRAY_BUFFER, icosahedronArray);
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, icosahedronIndices);
+    
+    // Bind the the first 3 (of 6) vertex values to position...
+    var attr = gl.getAttribLocation(prog, "pos");
+    gl.enableVertexAttribArray(attr);
+    gl.vertexAttribPointer(attr, 3, gl.FLOAT, false, 6*4, 0);
+        
+    // .. and the second three to colour
+    attr = gl.getAttribLocation(prog, "col");
+    gl.enableVertexAttribArray(attr);
+    gl.vertexAttribPointer(attr, 3, gl.FLOAT, false, 6*4, 3*4);
+    
+    
+    // Calculate projection matrix as perspective projection
+    var projMat = new Matrix4().perspective(45, WIDTH/HEIGHT, 0.1, 10000);
+    gl.uniformMatrix4fv(gl.getUniformLocation(prog, "projMat"), false, projMat.val);
+    
+    // Calculate view matrix (i.e. camera matrix) as looking at the origin
+    var vMat = new Matrix4().lookAt({x:40, y:40, z:80},
+                                    {x:0, y:0, z:0},
+                                    {x:0, y:1, z:0});
+    
+    
+    // Set model transform
+    var mMat = new Matrix4().scale({x:10, y:10, z:10});
+    
+    // Multiple model matrix and view matrix to give modelview, and assign to a uniform
+    var mvMat = new Matrix4(vMat).mul(mMat);
+    gl.uniformMatrix4fv(gl.getUniformLocation(prog, "mvMat"), false, mvMat.val);
+    
+    // Get the normal matrix, and assign to a uniform
+    var normMat = new Matrix3().fromMat4(mvMat).invert().transpose();
+    gl.uniformMatrix3fv(gl.getUniformLocation(prog, "normMat"), false, normMat.val);
+    
+    // Draw what's in the buffers (i.e. the icosahedron)
+    gl.drawElements(gl.TRIANGLES, numTriangles, gl.UNSIGNED_SHORT, 0);
+    
+    
+    // Now draw another icosahedron, with a different model matrix
+    mMat = new Matrix4().translate({x:-40, y:0, z:-5})
+                        .scale({x:10, y:10, z:10})
+                        .rotateY(45);
+    
+    mvMat = new Matrix4(vMat).mul(mMat);
+    gl.uniformMatrix4fv(gl.getUniformLocation(prog, "mvMat"), false, mvMat.val);
+    
+    normMat = new Matrix3().fromMat4(mvMat).invert().transpose();
+    gl.uniformMatrix3fv(gl.getUniformLocation(prog, "normMat"), false, normMat.val);
+    
+    gl.drawElements(gl.TRIANGLES, numTriangles, gl.UNSIGNED_SHORT, 0);
+}
+
+init();
+draw();
+</textarea>
+<h2>Vertex Shader</h2>
+<textarea id="code_vertexshader">
+// Per-vertex input
+attribute vec3 pos;
+attribute vec3 col;
+
+// Per-object input
+uniform mat4 projMat;
+uniform mat4 mvMat;
+uniform mat3 normMat;
+
+// Values that are interpolated across the face
+varying vec3 vcol;
+varying vec3 norm;
+varying vec3 P;
+
+void main() {
+    // Apply the modelview matrix to get the position in camera space
+    vec4 mv_pos = mvMat * vec4(pos, 1);
+    
+    // Apply the projection matrix to get the position in image space
+	gl_Position = projMat * mv_pos;
+       
+    // Assume that the object normals are radial from the object centre,
+    // and transform this normal using the normal matrix
+    norm = normMat * pos;
+    
+    // Send the (non-homogeneous) position to the fragment shader
+    P = mv_pos.xyz / mv_pos.w;
+    // Forward the vertex colour to the fragment shader
+   	vcol = col;
+}
+</textarea>
+<h2>Fragment Shader</h2>
+<textarea id="code_fragmentshader">
+// Specify floats to use medium precision
+precision mediump float;
+
+// Values that are interpolated across the face
+varying vec3 vcol;
+varying vec3 norm;
+varying vec3 P;
+
+void main() {
+    // Define the ambient light
+    vec3 a = vec3(0.6, 0.6, 0.6);
+    
+    // Define a point light
+    vec3 i = vec3(0.8, 0.5, 1);    
+    vec3 light_pos = vec3(-10, 20, 0);
+    
+    // Phong shading to get the fragment's illumination
+    vec3 N = normalize(norm);
+    vec3 L = normalize(light_pos - P);
+    vec3 V = normalize(-P);
+    vec3 R = 2.*dot(L,N)*N - L;    
+    vec3 col = 0.2*a
+        + 1.0 * max(dot(L, N),0.) * i
+        + 0.6 * pow( max(dot(R,V),0.) , 6.) * i;
+        
+    // Multiply the fragment's illumination by the fragment's object colour
+	gl_FragColor = vec4(vcol * col, 1.0);
+}
+</textarea>
+<input type="button" id="advancedOptionsLink" value="Advanced Options">
+<div id="advancedOptions">
+    <label><input id="accurateRuntimeChecks" type="checkbox" />Accurate runtime checks</label><br>
+    <label><input id="debugCodeInjection" type="checkbox" />Debug code injection</label>
+</div>
+
+<div id="codeerr"></div>
+
+</div>
+
+<div id="errorLineMsg"><div class="underline"></div><div class="message"></div></div>
+<div id="notification"></div>
+
+</body>
+
+</html>
